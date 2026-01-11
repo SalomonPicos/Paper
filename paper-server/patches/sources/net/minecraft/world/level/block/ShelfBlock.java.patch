@@ -12,7 +12,7 @@
                  BlockState blockState = state.setValue(POWERED, hasNeighborSignal);
                  if (!hasNeighborSignal) {
                      blockState = blockState.setValue(SIDE_CHAIN_PART, SideChainPart.UNCONNECTED);
-@@ -214,9 +_,22 @@
+@@ -218,9 +_,22 @@
                  if (shelfBlockEntity != null) {
                      for (int i1 = 0; i1 < shelfBlockEntity.getContainerSize(); i1++) {
                          int i2 = 9 - (allBlocksConnectedTo.size() - i) * shelfBlockEntity.getContainerSize() + i1;
