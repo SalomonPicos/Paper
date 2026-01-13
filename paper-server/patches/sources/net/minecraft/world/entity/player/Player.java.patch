@@ -51,6 +51,33 @@
      }
  
      private boolean isEquipped(Item item) {
+@@ -402,6 +_,26 @@
+ 
+     @Override
+     public void playSound(SoundEvent sound, float volume, float pitch) {
++        if (this.isSilent()) {
++            return;
++        }
++        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel && this.getSoundSource() == SoundSource.PLAYERS) {
++            net.minecraft.network.protocol.game.ClientboundSoundEntityPacket packet = new net.minecraft.network.protocol.game.ClientboundSoundEntityPacket(
++                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound),
++                this.getSoundSource(),
++                this,
++                volume,
++                pitch,
++                this.random.nextLong()
++            );
++            double radius = volume > 1.0F ? 16.0F * (double) volume : 16.0D;
++            net.minecraft.server.level.ServerPlayer self = this instanceof net.minecraft.server.level.ServerPlayer serverPlayer ? serverPlayer : null;
++            serverLevel.getServer().getPlayerList().broadcast(self, this.getX(), this.getY(), this.getZ(), radius, serverLevel.dimension(), packet);
++            if (self != null) {
++                self.connection.send(packet);
++            }
++            return;
++        }
+         this.level().playSound(this, this.getX(), this.getY(), this.getZ(), sound, this.getSoundSource(), volume, pitch);
+     }
+ 
 @@ -428,6 +_,18 @@
          }
      }
@@ -436,7 +463,7 @@
              this.lastLevelUpTime = this.tickCount;
          }
      }
-@@ -1554,15 +_,53 @@
+@@ -1554,15 +_,35 @@
      public int getXpNeededForNextLevel() {
          if (this.experienceLevel >= 30) {
              return 112 + (this.experienceLevel - 30) * 9;
@@ -448,7 +475,25 @@
  
 +    // Paper start - send while respecting visibility
 +    private static void sendSoundEffect(Player fromEntity, double x, double y, double z, SoundEvent soundEffect, SoundSource soundCategory, float volume, float pitch) {
-+        fromEntity.level().playSound(fromEntity, x, y, z, soundEffect, soundCategory, volume, pitch); // This will not send the effect to the entity itself
++        if (fromEntity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
++            net.minecraft.network.protocol.game.ClientboundSoundEntityPacket packet = new net.minecraft.network.protocol.game.ClientboundSoundEntityPacket(
++                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(soundEffect),
++                soundCategory,
++                fromEntity,
++                volume,
++                pitch,
++                fromEntity.random.nextLong()
++            );
++            double radius = volume > 1.0F ? 16.0F * (double) volume : 16.0D;
++            net.minecraft.server.level.ServerPlayer skip = fromEntity instanceof net.minecraft.server.level.ServerPlayer serverPlayer ? serverPlayer : null;
++            serverLevel.getServer().getPlayerList().broadcast(skip, x, y, z, radius, serverLevel.dimension(), packet);
++            if (skip != null) {
++                skip.connection.send(packet);
++            }
++            return;
++        }
++        // Fallback (shouldn't normally happen server-side)
++        fromEntity.level().playSound(fromEntity, x, y, z, soundEffect, soundCategory, volume, pitch);
 +        if (fromEntity instanceof ServerPlayer serverPlayer) {
 +            serverPlayer.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(soundEffect), soundCategory, x, y, z, volume, pitch, fromEntity.random.nextLong()));
 +        }
@@ -533,30 +578,3 @@
 +        public static final Player.BedSleepingProblem EXPLOSION = new Player.BedSleepingProblem(null); // Paper - Added to properly handle explosions in bed events
      }
  }
-
-@@ -401,4 +_,25 @@
-     @Override
-     public void playSound(SoundEvent sound, float volume, float pitch) {
--        this.level().playSound(this, this.getX(), this.getY(), this.getZ(), sound, this.getSoundSource(), volume, pitch);
-+        if (this.isSilent()) {
-+            return;
-+        }
-+        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel && this.getSoundSource() == SoundSource.PLAYERS) {
-+            net.minecraft.network.protocol.game.ClientboundSoundEntityPacket packet = new net.minecraft.network.protocol.game.ClientboundSoundEntityPacket(
-+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound),
-+                this.getSoundSource(),
-+                this,
-+                volume,
-+                pitch,
-+                this.random.nextLong()
-+            );
-+            double radius = volume > 1.0F ? 16.0F * (double) volume : 16.0D;
-+            net.minecraft.server.level.ServerPlayer self = this instanceof net.minecraft.server.level.ServerPlayer serverPlayer ? serverPlayer : null;
-+            serverLevel.getServer().getPlayerList().broadcast(self, this.getX(), this.getY(), this.getZ(), radius, serverLevel.dimension(), packet);
-+            if (self != null) {
-+                self.connection.send(packet);
-+            }
-+            return;
-+        }
-+        this.level().playSound(this, this.getX(), this.getY(), this.getZ(), sound, this.getSoundSource(), volume, pitch);
-     }
